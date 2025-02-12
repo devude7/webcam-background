@@ -2,13 +2,26 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import pyvirtualcam
+import argparse
 
 def main():
+    parser = argparse.ArgumentParser(description="Virtual camera with background replacement.")
+    parser.add_argument("-b", "--background", type=str, help="Path to background image", default=None)
+    args = parser.parse_args()
     
     cap = cv2.VideoCapture(0)  
     if not cap.isOpened():
         print("Camera not found")
         return
+    
+    # Load background image if provided
+    background = None
+    if args.background:
+        background = cv2.imread(args.background)
+        if background is None:
+            print("Error: Could not load background image.")
+            return
+        background = cv2.resize(background, (640, 480))
     
     # MediaPipe
     mp_selfie_segmentation = mp.solutions.selfie_segmentation
@@ -31,8 +44,13 @@ def main():
                 mask = result.segmentation_mask
                 binary_mask = (mask > 0.5).astype(np.uint8)
 
-                blurred_background = cv2.GaussianBlur(frame, (55, 55), 0)
-                output = frame * binary_mask[:, :, None] + blurred_background * (1 - binary_mask[:, :, None])
+                if background is None:
+                    blurred_background = cv2.GaussianBlur(frame, (55, 55), 0)
+                    bg = blurred_background
+                else:
+                    bg = background
+                
+                output = frame * binary_mask[:, :, None] + bg * (1 - binary_mask[:, :, None])
                 
                 cam.send(cv2.cvtColor(output, cv2.COLOR_BGR2RGB))
                 cam.sleep_until_next_frame()
@@ -42,7 +60,6 @@ def main():
                     break
 
     except RuntimeError as e:
-        # If OBS studio not installed show error
         if "OBS Virtual Camera device not found" in str(e):
             print("\nERROR: OBS Virtual Camera not found!")
             print("Please install OBS Studio and enable the Virtual Camera feature.")
