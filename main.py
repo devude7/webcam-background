@@ -7,6 +7,9 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="Virtual camera with background replacement.")
     parser.add_argument("-b", "--background", type=str, help="Path to background image", default=None)
+    parser.add_argument("-w", "--width", type=int, help="Camera width", default=640)
+    parser.add_argument("-h", "--height", type=int, help="Camera height", default=480)
+    parser.add_argument("-f", "--fps", type=int, help="Camera FPS", default=60)
     args = parser.parse_args()
     
     cap = cv2.VideoCapture(0)  
@@ -21,14 +24,14 @@ def main():
         if background is None:
             print("Error: Could not load background image.")
             return
-        background = cv2.resize(background, (640, 480))
+        background = cv2.resize(background, (args.width, args.height))
     
     # MediaPipe
     mp_selfie_segmentation = mp.solutions.selfie_segmentation
     segment = mp_selfie_segmentation.SelfieSegmentation(model_selection=1)  
 
     try:
-        with pyvirtualcam.Camera(width=640, height=480, fps=60) as cam:
+        with pyvirtualcam.Camera(width=args.width, height=args.height, fps=args.fps) as cam:
             print(f"Virtual camera started: {cam.device}")
 
             while True:
@@ -37,7 +40,7 @@ def main():
                     print("Couldn't grab frame")
                     break
 
-                frame = cv2.resize(frame, (640, 480))  
+                frame = cv2.resize(frame, (args.width, args.height))  
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 result = segment.process(frame_rgb)
                 
